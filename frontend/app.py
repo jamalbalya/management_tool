@@ -1,50 +1,63 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+import streamlit as st
 import requests
+import pandas as pd
+import plotly.express as px
 
-app = FastAPI()
+# Backend API URL
+API_URL = "http://127.0.0.1:8000"
 
-# Models
-class TestCase(BaseModel):
-    id: int
-    name: str
-    description: str
-    linked_issue: str = None
+# Title
+st.title("Test Management Dashboard")
 
-test_cases = []
-
-# Test Case Endpoints
-@app.post("/testcases/")
-def create_test_case(test_case: TestCase):
-    test_cases.append(test_case)
-    return {"message": "Test case created successfully", "test_case": test_case}
-
-@app.get("/testcases/")
-def list_test_cases():
-    return test_cases
-
-@app.get("/testcases/{test_case_id}")
-def get_test_case(test_case_id: int):
-    for test in test_cases:
-        if test.id == test_case_id:
-            return test
-    raise HTTPException(status_code=404, detail="Test case not found")
-
-# Jira Integration
-@app.post("/jira/link")
-def link_test_case_to_jira(test_case_id: int, issue_id: str):
-    jira_url = "https://yourcompany.atlassian.net/rest/api/3/issue"
-    headers = {"Authorization": "Bearer YOUR_JIRA_API_TOKEN", "Content-Type": "application/json"}
-
-    payload = {
-        "fields": {
-            "description": f"Linked to Test Case {test_case_id}",
-        }
-    }
-
-    response = requests.put(f"{jira_url}/{issue_id}", json=payload, headers=headers)
-
-    if response.status_code == 204:
-        return {"message": "Test case linked to Jira issue successfully"}
+# Fetch Test Cases
+@st.cache
+def fetch_test_cases():
+    response = requests.get(f"{API_URL}/testcases/")
+    if response.status_code == 200:
+        return response.json()
     else:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
+        st.error("Failed to fetch test cases")
+        return []
+
+# Sidebar Filters
+statuses = ["All", "New", "Pass", "Fail", "Blocked"]
+status_filter = st.sidebar.selectbox("Filter by Status", statuses)
+
+# Fetch and Filter Test Cases
+test_cases = fetch_test_cases()
+if status_filter != "All":
+    test_cases = [tc for tc in test_cases if tc["status"] == status_filter]
+
+# Display Test Cases
+st.subheader("Test Cases")
+df = pd.DataFrame(test_cases)
+st.dataframe(df)
+
+# Visualization
+st.subheader("Test Case Status Distribution")
+if df.empty:
+    st.warning("No test cases available.")
+else:
+    status_counts = df["status"].value_counts()
+    fig = px.pie(
+        values=status_counts.values,
+        names=status_counts.index,
+        title="Test Case Status Distribution",
+    )
+    st.plotly_chart(fig)
+
+# Add New Test Case
+st.subheader("Add New Test Case")
+with st.form("add_test_case"):
+    name = st.text_input("Test Case Name")
+    description = st.text_area("Test Case Description")
+    status = st.selectbox("Status", ["New", "Pass", "Fail", "Blocked"])
+    submitted = st.form_submit_button("Add Test Case")
+
+    if submitted:
+        payload = {"name": name, "description": description, "status": status}
+        response = requests.post(f"{API_URL}/testcases/", json=payload)
+        if response.status_code == 200:
+            st.success("Test case added successfully!")
+        else:
+            st.error("Failed to add test case.")

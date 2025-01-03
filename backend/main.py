@@ -15,7 +15,7 @@ class TestCaseDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     description = Column(Text)
-    linked_issue = Column(String, nullable=True)
+    status = Column(String, default="New")  # Status column for progress tracking
 
 Base.metadata.create_all(bind=engine)
 
@@ -31,8 +31,8 @@ def get_db():
         db.close()
 
 @app.post("/testcases/")
-def create_test_case(name: str, description: str, db=Depends(get_db)):
-    test_case = TestCaseDB(name=name, description=description)
+def create_test_case(name: str, description: str, status: str = "New", db=Depends(get_db)):
+    test_case = TestCaseDB(name=name, description=description, status=status)
     db.add(test_case)
     db.commit()
     db.refresh(test_case)
@@ -48,3 +48,7 @@ def get_test_case(test_case_id: int, db=Depends(get_db)):
     if not test_case:
         raise HTTPException(status_code=404, detail="Test case not found")
     return test_case
+
+@app.get("/testcases/status/{status}")
+def get_test_cases_by_status(status: str, db=Depends(get_db)):
+    return db.query(TestCaseDB).filter(TestCaseDB.status == status).all()
