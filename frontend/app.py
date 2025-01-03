@@ -6,58 +6,65 @@ import plotly.express as px
 # Backend API URL
 API_URL = "http://127.0.0.1:8000"
 
-# Title
-st.title("Test Management Dashboard")
+# Streamlit page configuration
+st.set_page_config(page_title="Test Management Dashboard", layout="wide")
 
-# Fetch Test Cases
-@st.cache
+# Title and Description
+st.title("Test Management Dashboard")
+st.markdown("""
+Manage your test cases efficiently. Add, view, and analyze test cases directly from this dashboard.
+""")
+
+# Fetch test cases from the backend
+@st.cache_data
 def fetch_test_cases():
-    response = requests.get(f"{API_URL}/testcases/")
-    if response.status_code == 200:
+    try:
+        response = requests.get(f"{API_URL}/testcases/")
+        response.raise_for_status()
         return response.json()
-    else:
-        st.error("Failed to fetch test cases")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to fetch test cases: {e}")
         return []
 
-# Sidebar Filters
-statuses = ["All", "New", "Pass", "Fail", "Blocked"]
-status_filter = st.sidebar.selectbox("Filter by Status", statuses)
-
-# Fetch and Filter Test Cases
-test_cases = fetch_test_cases()
-if status_filter != "All":
-    test_cases = [tc for tc in test_cases if tc["status"] == status_filter]
+# Add a new test case
+def add_test_case(name, description, status):
+    try:
+        data = {
+            "name": name,
+            "description": description,
+            "status": status,
+        }
+        response = requests.post(f"{API_URL}/testcases/", json=data)
+        response.raise_for_status()
+        st.success("Test case added successfully!")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to add test case: {e}")
 
 # Display Test Cases
-st.subheader("Test Cases")
-df = pd.DataFrame(test_cases)
-st.dataframe(df)
+st.header("Test Cases")
+test_cases = fetch_test_cases()
 
-# Visualization
-st.subheader("Test Case Status Distribution")
-if df.empty:
-    st.warning("No test cases available.")
+if test_cases:
+    df = pd.DataFrame(test_cases)
+    st.write(df)
+
+    # Display a status distribution chart
+    if "status" in df.columns:
+        fig = px.pie(df, names="status", title="Test Case Status Distribution")
+        st.plotly_chart(fig)
 else:
-    status_counts = df["status"].value_counts()
-    fig = px.pie(
-        values=status_counts.values,
-        names=status_counts.index,
-        title="Test Case Status Distribution",
-    )
-    st.plotly_chart(fig)
+    st.warning("No test cases available.")
 
-# Add New Test Case
-st.subheader("Add New Test Case")
-with st.form("add_test_case"):
-    name = st.text_input("Test Case Name")
-    description = st.text_area("Test Case Description")
-    status = st.selectbox("Status", ["New", "Pass", "Fail", "Blocked"])
-    submitted = st.form_submit_button("Add Test Case")
+# Add New Test Case Form
+st.header("Add New Test Case")
+with st.form("add_test_case_form"):
+    test_case_name = st.text_input("Test Case Name", placeholder="Enter test case name")
+    test_case_description = st.text_area("Test Case Description", placeholder="Enter test case description")
+    test_case_status = st.selectbox("Status", options=["New", "In Progress", "Completed"])
+    submit_button = st.form_submit_button("Add Test Case")
 
-    if submitted:
-        payload = {"name": name, "description": description, "status": status}
-        response = requests.post(f"{API_URL}/testcases/", json=payload)
-        if response.status_code == 200:
-            st.success("Test case added successfully!")
+    if submit_button:
+        if test_case_name and test_case_description and test_case_status:
+            add_test_case(test_case_name, test_case_description, test_case_status)
         else:
-            st.error("Failed to add test case.")
+            st.error("Please fill out all fields to add a test case.")
