@@ -1,0 +1,7 @@
+[server]
+headless = true
+enableCORS = false
+port = 8501
+
+[global]
+hide_streamlit_banner = true
