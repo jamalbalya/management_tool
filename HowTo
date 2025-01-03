@@ -1,0 +1,7 @@
+Backend
+cd test_management_tool/backend
+uvicorn main:app --reload
+
+Frontend
+cd test_management_tool/frontend
+streamlit run app.py
