@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String
@@ -55,23 +56,31 @@ def read_test_cases(db: Session = Depends(get_db)):
     """
     Fetch all test cases from the database.
     """
-    test_cases = db.query(TestCase).all()
-    return test_cases
+    try:
+        test_cases = db.query(TestCase).all()
+        return test_cases
+    except Exception as e:
+        logging.error(f"Error fetching test cases: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch test cases.")
 
 @app.post("/testcases/")
 def create_test_case(test_case: TestCaseCreate, db: Session = Depends(get_db)):
     """
     Add a new test case to the database.
     """
-    new_test_case = TestCase(
-        name=test_case.name,
-        description=test_case.description,
-        status=test_case.status,
-    )
-    db.add(new_test_case)
-    db.commit()
-    db.refresh(new_test_case)
-    return new_test_case
+    try:
+        new_test_case = TestCase(
+            name=test_case.name,
+            description=test_case.description,
+            status=test_case.status,
+        )
+        db.add(new_test_case)
+        db.commit()
+        db.refresh(new_test_case)
+        return new_test_case
+    except Exception as e:
+        logging.error(f"Error adding test case: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add test case.")
 
 @app.get("/")
 def root():
