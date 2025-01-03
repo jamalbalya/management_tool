@@ -63,7 +63,7 @@ def read_test_cases(db: Session = Depends(get_db)):
         return test_cases
     except Exception as e:
         logging.error(f"Error fetching test cases: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch test cases.")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch test cases: {e}")
 
 @app.post("/testcases/")
 def create_test_case(test_case: TestCaseCreate, db: Session = Depends(get_db)):
@@ -82,7 +82,7 @@ def create_test_case(test_case: TestCaseCreate, db: Session = Depends(get_db)):
         return new_test_case
     except Exception as e:
         logging.error(f"Error adding test case: {e}")
-        raise HTTPException(status_code=500, detail="Failed to add test case. Please try again later.")
+        raise HTTPException(status_code=500, detail=f"Failed to add test case: {e}")
 
 @app.get("/")
 def root():

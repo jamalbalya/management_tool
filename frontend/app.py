@@ -8,7 +8,7 @@ BACKEND_URL = "http://127.0.0.1:8000"
 # Helper function to handle errors gracefully
 def handle_error(response):
     if response.status_code != 200:
-        st.error(f"Failed to fetch test cases: {response.text}")
+        st.error(f"Error: {response.text}")
         return None
     return response.json()
 
