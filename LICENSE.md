@@ -15,6 +15,6 @@ No ownership of the code, its flow, or any associated intellectual property is t
 Failure to comply with the terms of this license may result in legal action, including the potential for civil and/or criminal liability.
 6. Permission Requests
 
-For any inquiries regarding permission to use, modify, distribute, or otherwise interact with this software beyond the scope of the permitted use outlined above, please contact the author directly at:
+For any inquiries regarding permission to modify, distribute, or otherwise interact with this software beyond the scope of the permitted use outlined above, please contact the author directly at:
 Username: @jamalbalya
 author: Jamal Balya
