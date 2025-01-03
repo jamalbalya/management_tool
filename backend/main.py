@@ -1,26 +1,44 @@
 from fastapi import FastAPI, HTTPException, Depends
-from sqlalchemy import create_engine, Column, Integer, String, Text
+from pydantic import BaseModel
+from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from fastapi.middleware.cors import CORSMiddleware
 
-# Database Setup
+# Initialize FastAPI app
+app = FastAPI()
+
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (use specific domains in production)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
+# Database configuration
 DATABASE_URL = "sqlite:///./test_management.db"
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 Base = declarative_base()
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Models
-class TestCaseDB(Base):
+# Database Models
+class TestCase(Base):
     __tablename__ = "test_cases"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
-    description = Column(Text)
-    status = Column(String, default="New")  # Status column for progress tracking
+    description = Column(String)
+    status = Column(String)
 
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
-# FastAPI App
-app = FastAPI()
+# Pydantic Models for Input Validation
+class TestCaseCreate(BaseModel):
+    name: str
+    description: str
+    status: str
 
 # Dependency to get DB session
 def get_db():
@@ -30,25 +48,34 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/testcases/")
-def create_test_case(name: str, description: str, status: str = "New", db=Depends(get_db)):
-    test_case = TestCaseDB(name=name, description=description, status=status)
-    db.add(test_case)
-    db.commit()
-    db.refresh(test_case)
-    return test_case
+# API Endpoints
 
 @app.get("/testcases/")
-def list_test_cases(db=Depends(get_db)):
-    return db.query(TestCaseDB).all()
+def read_test_cases(db: Session = Depends(get_db)):
+    """
+    Fetch all test cases from the database.
+    """
+    test_cases = db.query(TestCase).all()
+    return test_cases
 
-@app.get("/testcases/{test_case_id}")
-def get_test_case(test_case_id: int, db=Depends(get_db)):
-    test_case = db.query(TestCaseDB).filter(TestCaseDB.id == test_case_id).first()
-    if not test_case:
-        raise HTTPException(status_code=404, detail="Test case not found")
-    return test_case
+@app.post("/testcases/")
+def create_test_case(test_case: TestCaseCreate, db: Session = Depends(get_db)):
+    """
+    Add a new test case to the database.
+    """
+    new_test_case = TestCase(
+        name=test_case.name,
+        description=test_case.description,
+        status=test_case.status,
+    )
+    db.add(new_test_case)
+    db.commit()
+    db.refresh(new_test_case)
+    return new_test_case
 
-@app.get("/testcases/status/{status}")
-def get_test_cases_by_status(status: str, db=Depends(get_db)):
-    return db.query(TestCaseDB).filter(TestCaseDB.status == status).all()
+@app.get("/")
+def root():
+    """
+    Root endpoint for basic health check.
+    """
+    return {"message": "Test Management Backend is running."}
