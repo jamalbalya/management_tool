@@ -54,10 +54,12 @@ def get_db():
 @app.get("/testcases/")
 def read_test_cases(db: Session = Depends(get_db)):
     """
-    Fetch all test cases from the database.
+    Fetch all test cases from the database. If no test cases exist, return an empty list.
     """
     try:
         test_cases = db.query(TestCase).all()
+        if not test_cases:
+            return []  # Return an empty list if no test cases are found
         return test_cases
     except Exception as e:
         logging.error(f"Error fetching test cases: {e}")
@@ -66,7 +68,7 @@ def read_test_cases(db: Session = Depends(get_db)):
 @app.post("/testcases/")
 def create_test_case(test_case: TestCaseCreate, db: Session = Depends(get_db)):
     """
-    Add a new test case to the database.
+    Add a new test case to the database. Logs the error and returns a user-friendly message in case of failure.
     """
     try:
         new_test_case = TestCase(
@@ -80,7 +82,7 @@ def create_test_case(test_case: TestCaseCreate, db: Session = Depends(get_db)):
         return new_test_case
     except Exception as e:
         logging.error(f"Error adding test case: {e}")
-        raise HTTPException(status_code=500, detail="Failed to add test case.")
+        raise HTTPException(status_code=500, detail="Failed to add test case. Please try again later.")
 
 @app.get("/")
 def root():
